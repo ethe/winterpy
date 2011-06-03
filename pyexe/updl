@@ -3,7 +3,7 @@
 
 import os, sys
 import time
-from utils import filesize
+from myutils import filesize
 from functools import lru_cache
 from subprocess import getoutput
 try:
@@ -21,10 +21,12 @@ from bottle import route, run, request, redirect, static_file, template, ServerA
 ROOT_DIR   = os.path.expanduser('~/scripts/python/pyother/updl')
 STATIC_DIR = os.path.join(ROOT_DIR, 'static')
 UPLOAD_DIR = os.path.expanduser('~/tmpfs/.upload')
-DOWNLD_DIR = os.path.expanduser('~/.nginx/www/dl')
+DOWNLD_DIR = os.path.expanduser('~/tmpfs/.dl')
 TEMPLATE_PATH = os.path.join(ROOT_DIR, 'view')
 if not os.path.exists(UPLOAD_DIR):
   os.mkdir(UPLOAD_DIR)
+if not os.path.exists(DOWNLD_DIR):
+  os.mkdir(DOWNLD_DIR)
 bottle.TEMPLATE_PATH = [TEMPLATE_PATH]
 
 class DotDict: pass
@@ -94,10 +96,10 @@ def download(path):
     pass
   realpath = os.path.join(DOWNLD_DIR, path)
   if os.path.isdir(realpath):
+    if path and not path.endswith('/'):
+      redirect('/updl/dl/%s/' % path, 301)
     if os.path.exists(os.path.join(realpath, 'index.html')):
       return static_file('index.html', root=realpath)
-    elif path and not path.endswith('/'):
-      redirect('/updl/dl/%s/' % path, 301)
     files = []
     dirs = []
     for i in os.listdir(realpath):

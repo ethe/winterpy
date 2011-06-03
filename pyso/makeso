@@ -11,8 +11,9 @@ makeaso () {
   fi
   shift
   setopt -x
-  gcc $@ -shared "$infile" -o "$outfile"
+  gcc $@ -O2 -shared "$infile" -o "$outfile"
 }
 
 makeaso ard.c
 makeaso wchar.c
+makeaso xlib.c -lX11
