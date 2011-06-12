@@ -51,7 +51,7 @@ class Subprocess(subprocess.Popen):
     self.stdin.write(msg)
     self.stdin.flush()
 
-  def poll(self, fd, timeout=0.05):
+  def dopoll(self, fd, timeout=0.05):
     '''从文件描述符 fd 中读取尽可能多的字符，返回类型由 decode 属性决定'''
     ret = b''
 
@@ -76,13 +76,13 @@ class Subprocess(subprocess.Popen):
   def output(self):
     '''如果指定了 stdout=PIPE，则返回 stdout 输出，否则抛出 AttributeError 异常'''
     if self.stdout is not None:
-      return self.poll(self.stdout.fileno())
+      return self.dopoll(self.stdout.fileno())
     else:
       raise AttributeError('stdout 不是 pipe')
 
   def error(self):
     '''如果指定了 stderr=PIPE，则返回 stderr 输出，否则抛出 AttributeError 异常'''
     if self.stderr is not None:
-      return self.poll(self.stderr.fileno())
+      return self.dopoll(self.stderr.fileno())
     else:
       raise AttributeError('stderr 不是 pipe')
