@@ -3,6 +3,8 @@
 
 import os
 import re
+import time
+import errno
 
 from subprocessio import Subprocess, PIPE
 
@@ -11,7 +13,7 @@ re_ans = re.compile(r'^ANS_(?P<name>[^=]+)=(?P<value>.+)$', re.MULTILINE)
 class MPlayer:
   def __init__(self):
     cmd = ['mplayer', '-nolirc', '-idle', '-quiet', '-slave']
-    self.sub = Subprocess(cmd, stdin=PIPE, stdout=PIPE)
+    self.sub = Subprocess(cmd, stdin=PIPE, stdout=PIPE, stderr=PIPE)
     self.currentfile = None
 
   @property
@@ -28,10 +30,14 @@ class MPlayer:
   def paused(self):
     return self.getproperty('pause')
   @property
+  def muted(self):
+    return self.getproperty('mute')
+  @property
   def looping(self):
     return self.getproperty('loop') != -1
 
-  def playfile(self, file):
+  def play(self, file):
+    open(file) # catch I/O errors
     self.docmd('loadfile %s' % file, False)
     self.currentfile = file
 
@@ -56,17 +62,19 @@ class MPlayer:
 
   def quit(self):
     self.docmd('quit')
-    self.sub = None
+
+  def pause(self):
+    self.docmd('pause', False)
 
   def __del__(self):
-    if self.sub:
+    if self.sub.poll() is None:
       self.docmd('quit')
 
   def getproperty(self, prop):
-    return self.getans('get_property %s' % cmd)
+    return self.getans('pausing_keep_force get_property %s' % prop, False)
 
-  def getans(self, cmd):
-    output = self.docmd(cmd)
+  def getans(self, cmd, pausing_keep=True):
+    output = self.docmd(cmd, pausing_keep)[0]
     m = re_ans.search(output)
     v = m.group('value')
     if v.startswith("'"):
@@ -88,6 +96,8 @@ class MPlayer:
       cmd = 'pausing_keep ' + cmd
     self.sub.input(cmd)
     time.sleep(0.2)
-    return self.sub.output()
+    oe = self.sub.output(), self.sub.error()
+    print(oe[0], oe[1], sep='\n')
+    return oe
 
 class MplayerError(Exception): pass
