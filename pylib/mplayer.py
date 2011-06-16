@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 # vim:fileencoding=utf-8
 
+'''
+通过 Python 控制 mplayer 的音频播放
+'''
+
 import os
 import re
 import time
@@ -99,5 +103,3 @@ class MPlayer:
     oe = self.sub.output(), self.sub.error()
     print(oe[0], oe[1], sep='\n')
     return oe
-
-class MplayerError(Exception): pass
