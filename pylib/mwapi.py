@@ -5,6 +5,9 @@
 
 from httpsession import Session
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Site(Session):
   def __init__(self, apiurl, username=None, password=None, **kwargs):
@@ -30,8 +33,11 @@ class Site(Session):
 
   def request(self, data, **kwargs):
     data['format'] = 'json'
+    logger.debug('> %r', data)
     ans = super().request(self.apiurl, data, **kwargs).read().decode('utf-8')
-    return json.loads(ans)
+    ans = json.loads(ans)
+    logger.debug('< %r', ans)
+    return ans
 
   def __getitem__(self, title):
     return self.getPage(title, redirect=True)
@@ -42,21 +48,46 @@ class Site(Session):
       'titles': title,
     }
     if redirect:
-      data['redirects'] = ''
+      data['redirects'] = '1'
     ans = self.request(data)
     return Page(ans['query'], self)
+
+  def getEditToken(self, title):
+    return self.getToken('edit', title)
+
+  def getToken(self, kind, title):
+    data = {
+      'action': 'query',
+      'prop': 'info',
+      'intoken': kind,
+      'titles': title
+    }
+    ans = self.request(data)
+    if 'warnings' in ans:
+      warning = tuple(ans['warnings']['info'].values())[0]
+      if warning.find('not allowed') > 0:
+        raise AuthError(warning, ans)
+      else:
+        raise MediaWikiError(warning, ans)
+    page = tuple(ans['query']['pages'].values())[0]
+    return page['%stoken' % kind]
 
 class Page:
   def __init__(self, pageinfo, site):
     self.site = site
-    if pageinfo['redirects']:
+    if 'redirects' in pageinfo:
       self.redirectedfrom = pageinfo['redirects'][0]['from']
-    if pageinfo['normalized']:
+    else:
+      self.redirectedfrom = None
+    if 'normalized' in pageinfo:
       self.normalizedto = pageinfo['normalized'][0]['to']
+    else:
+      self.normalizedto = None
     page = tuple(pageinfo['pages'].values())[0]
     self.title = page['title']
     self.namespace = page['ns']
     self.pageid = page['pageid']
+    self.timestamp = None
 
   @property
   def content(self):
@@ -64,11 +95,39 @@ class Page:
       'action': 'query',
       'titles': self.title,
       'prop': 'revisions',
-      'rvprop': 'content',
+      'rvprop': 'content|timestamp',
+
     }
     ans = self.site.request(data)
     page = tuple(ans['query']['pages'].values())[0]
-    return tuple(page['revisions'][0].values())[0]
+    self.timestamp = page['revisions'][0]['timestamp']
+    return page['revisions'][0]['*']
+
+  @content.setter
+  def content(self, text):
+    self.edit(text)
+
+  def edit(self, text, summary=None, minor=False):
+    data = {
+      'action': 'edit',
+      'title': self.title,
+      'text': text,
+      'token': self.site.getEditToken(self.title),
+    }
+    if self.timestamp is not None:
+      data['basetimestamp'] = self.timestamp
+    if summary is not None:
+      data['summary'] = summary
+    if minor:
+      data['minor'] = '1'
+    else:
+      data['notminor'] = '1'
+    ans = self.site.request(data)
+    if 'error' in ans:
+      raise MediaWikiError(ans['error']['info'], ans)
+    elif 'edit' not in ans or ans['edit']['result'] != 'Success':
+      raise MediaWikiError('unknown error', ans)
+    return ans['edit']
 
   def __repr__(self):
     return '<Page: %s from %s/>' % (self.title, self.site.apiurl.rsplit('/', 1)[0])
