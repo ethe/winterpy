@@ -13,6 +13,7 @@ class Site(Session):
   def __init__(self, apiurl, username=None, password=None, **kwargs):
     super().__init__(**kwargs)
     self.apiurl = apiurl
+    self.loggedin = False
     if username is not None:
       self.login(username, password)
 
@@ -29,7 +30,15 @@ class Site(Session):
     ans = self.request(data)
     if ans['login']['result'] != 'Success':
       raise AuthError(ans['login']['result'], ans)
+    self.loggedin = True
     return ans
+
+  def logout(self):
+    data = {
+      'action': 'logout',
+    }
+    self.request(data)
+    self.loggedin = False
 
   def request(self, data, **kwargs):
     data['format'] = 'json'
