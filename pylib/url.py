@@ -9,6 +9,7 @@
 
 import sys, os
 from urllib.parse import urlsplit
+from urllib.parse import quote as URIescape
 from urllib.parse import unquote as URIunescape
 from http import cookies
 # 这个放在这里备用
@@ -128,7 +129,7 @@ class PostData:
   def add(self, key, value):
     '''添加键值对，key 和 value 要求为 str'''
     key = key.encode('utf-8')
-    value = value.encode('utf-8')
+    value = URIescape(value).encode('utf-8')
     self.data += b'&'+key+b'='+value if self.data else key+b'='+value
 
   def __bool__(self):
