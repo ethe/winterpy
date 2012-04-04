@@ -66,7 +66,7 @@ class Subprocess(subprocess.Popen):
         break
 
     if self.decode:
-      return ret.decode()
+      return ret.decode(errors='replace')
     else:
       return ret
 

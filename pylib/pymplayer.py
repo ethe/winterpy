@@ -27,6 +27,9 @@ class MPlayer:
   def pos(self):
     return self.getans('get_time_pos')
   @property
+  def time_left(self):
+    return self.length - self.pos
+  @property
   def filename(self):
     '''注意：只有文件名，没有路径'''
     return self.getans('get_file_name')
@@ -80,6 +83,8 @@ class MPlayer:
   def getans(self, cmd, pausing_keep=True):
     output = self.docmd(cmd, pausing_keep)[0]
     m = re_ans.search(output)
+    if m is None:
+      return 0
     v = m.group('value')
     if v.startswith("'"):
       return v[1:-1]

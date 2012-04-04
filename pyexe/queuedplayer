@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+# vim:fileencoding=utf-8
+
+import os
+import select
+import socket
+import collections
+
+from pymplayer import MPlayer
+
+def main(sockfile):
+  if os.path.exists(sockfile):
+    os.unlink(sockfile)
+  poll = select.epoll()
+  sock = socket.socket(socket.AF_UNIX)
+  sock.bind(sockfile)
+  sock.listen(2)
+  sockfd = sock.fileno()
+  poll.register(sockfd, select.EPOLLIN)
+  socks = {}
+  playlist = collections.deque()
+  player = MPlayer()
+  while True:
+    left = timeout = player.time_left
+    print('Time left:', left)
+    if left < 1:
+      if len(playlist) == 0:
+        timeout = -1
+      else:
+        song = playlist.popleft().decode()
+        player.play(song)
+        timeout = player.length
+    print('Timeout:', timeout)
+    try:
+      evts = poll.poll(timeout)
+    except IOError as e:
+      if e.errno == 4: # Interrupted system call
+        continue
+      else:
+        raise
+
+    for fd, evt in evts:
+      if fd == sockfd:
+        conn = sock.accept()[0]
+        connfd = conn.fileno()
+        socks[connfd] = [conn, None, None]
+        poll.register(connfd, select.EPOLLIN)
+      elif evt & select.EPOLLIN:
+        conn = socks[fd]
+        data = conn[0].recv(1024)
+        if not data:
+          conn[0].close()
+          poll.unregister(fd)
+          continue
+        if conn[1]:
+          data = conn[1] + data
+        lines = data.split(b'\n')
+        if lines[-1]:
+          conn[1] = lines[-1]
+        for l in lines[:-1]:
+          if l == b'list':
+            poll.modify(fd, select.EPOLLIN|select.EPOLLOUT)
+          else:
+            playlist.append(l)
+      elif evt & select.EPOLLOUT:
+        conn = socks[fd]
+        to_send = conn[2]
+        if not to_send:
+          to_send = b'\n'.join(playlist) + b'\n'
+        try:
+          sent = conn[0].send(to_send)
+        except socket.error:
+          conn[0].close()
+          poll.unregister(fd)
+          continue
+        conn[2] = to_send[sent:]
+        if not conn[2]:
+          poll.modify(fd, select.EPOLLIN)
+      else:
+        print('unhandled (fd, evt) pair: %r', (fd, evt), file=sys.stderr)
+
+if __name__ == '__main__':
+  main('/tmp/test')
