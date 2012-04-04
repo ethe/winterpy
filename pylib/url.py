@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# fileencoding=utf-8
-
 '''
 一些和HTTP/HTML相关的函数/类
 
@@ -9,10 +6,9 @@
 
 import sys, os
 from urllib.parse import urlsplit
+from urllib.parse import quote as URIescape
 from urllib.parse import unquote as URIunescape
 from http import cookies
-# 这个放在这里备用
-from urllib.parse import quote as URIescape
 
 class URL(dict):
   '''
@@ -119,7 +115,7 @@ class PostData:
     elif isinstance(data, bytes):
       self.data = data
     elif isinstance(data, str):
-      self.data = data.encode('utf-8')
+      self.data = URIescape(data).encode('utf-8')
     elif data is None:
       pass
     else:
@@ -128,7 +124,7 @@ class PostData:
   def add(self, key, value):
     '''添加键值对，key 和 value 要求为 str'''
     key = key.encode('utf-8')
-    value = value.encode('utf-8')
+    value = URIescape(value).encode('utf-8')
     self.data += b'&'+key+b'='+value if self.data else key+b'='+value
 
   def __bool__(self):

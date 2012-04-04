@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-
 import os
 import abc
 
@@ -78,3 +75,16 @@ class PickledData(Serializer):
     self.data = pickle.load(open(self.fname, 'rb'))
 
 class SerializerError(Exception): pass
+
+if __name__ == '__main__':
+  # For testing purpose
+  import tempfile
+  f = tempfile.mkstemp()[1]
+  testData = {'sky': 1000, 'kernel': -1000}
+  try:
+    with PickledData(f, default=testData) as p:
+      print(p)
+      p['space'] = 10000
+      print(p)
+  finally:
+    os.unlink(f)

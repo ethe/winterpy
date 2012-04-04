@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-
 '''
 提供网络信息获取服务
 '''
@@ -34,10 +31,11 @@ def getTitle(url, headers={}, timeout=5):
   try:
     response = s.request(url, headers=headers)
   except socket.error:
-    response = s.request(url, headers=headers, proxy={
-      'http':  'http://localhost:8000',
-      'https': 'http://localhost:8000',
+    s = Session(proxy={
+      'http':  'http://localhost:8087',
+      'https': 'http://localhost:8087',
     })
+    response = s.request(url, headers=headers)
 
   contentType = response.getheader('Content-Type', default='text/html')
   type = contentType.split(';', 1)[0]
@@ -48,13 +46,18 @@ def getTitle(url, headers={}, timeout=5):
     charset = contentType.rsplit('=', 1)[1]
   except IndexError:
     charset = None
-  # 1024 对于 Twitter 来说太小了
-  content = response.read(10240)
 
   title = b''
-  m = re.search(b'<title[^>]*>([^<]*)', content, re.IGNORECASE)
-  if m:
-    title = m.group(1)
+  content = b''
+  for i in range(300):
+    content += response.read(64)
+    if len(content) < 64:
+      break
+    m = re.search(b'<title[^>]*>([^<]*)<', content, re.IGNORECASE)
+    if m:
+      title = m.group(1)
+      break
+  response.close()
 
   if charset is None:
     import chardet
@@ -66,23 +69,6 @@ def getTitle(url, headers={}, timeout=5):
   title = entityunescape(title.replace('\n', '')).strip()
 
   return title or None
-
-def translate(q, langpair='|zh', hl='zh'):
-  '''使用 Google 翻译文本
-  http://code.google.com/intl/zh-CN/apis/ajaxlanguage/documentation/reference.html
-  '''
-  import json
-  import urllib.request
-
-  url = 'http://ajax.googleapis.com/ajax/services/language/translate'
-  url += '?format=text&v=1.0&hl=zh&langpair=%s&q=%s' % (
-      URIescape(langpair), URIescape(q))
-  ans = urllib.request.urlopen(url, timeout=5).read().decode('utf-8')
-  ans = json.loads(ans)
-  if ans['responseStatus'] != 200:
-    raise Exception(ans)
-
-  return ans['responseData']['translatedText']
 
 def ubuntuPaste(poster='', screenshot='', code2='',
     klass='bash', filename=None):

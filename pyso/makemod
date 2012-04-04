@@ -1,0 +1,21 @@
+#!/bin/zsh
+
+emulate -L zsh
+
+cd $(dirname $0)
+PS4=
+FLAGS=$(pkg-config --cflags --libs python3)
+
+makeamod () {
+  infile=$1
+  outfile=../pylib/${infile%.*}.so
+  if [[ $outfile -nt $infile ]]; then
+    return
+  fi
+  shift
+  setopt -x
+  gcc $@ -O2 -shared -fPIC "$infile" -o "$outfile" ${=FLAGS}
+}
+
+makeamod X.c -lX11 -lXtst -lXss
+makeamod myopencv.c `pkg-config --cflags --libs opencv`

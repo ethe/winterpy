@@ -1,11 +1,12 @@
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-
 '''
 一些常用短小的函数/类
 '''
 
 import os, sys
+import datetime
+from functools import lru_cache, wraps
+import logging
+import time
 
 def path_import(path):
   '''指定路径来 import'''
@@ -80,16 +81,111 @@ def loadso(fname):
     if os.path.exists(p):
       return CDLL(p)
   raise ImportError('%s not found' % fname)
-def restart_when_done(func, max_times, args=(), kwargs={}, secs=60):
-  '''
-  在函数退出后重新运行之，直到在 secs 秒（默认一分钟）时间内达到 max_times 次退出
-  '''
-  import time
-  from collections import deque
-  dq = deque(maxlen=max_times)
 
-  dq.append(time.time())
-  func(*args, **kwargs)
-  while len(dq) < max_times or time.time() - dq[0] > secs:
+def restart_if_failed(func, max_tries, args=(), kwargs={}, secs=60):
+  '''
+  re-run when some exception happens, until `max_tries` in `secs`
+  '''
+  import traceback
+  from collections import deque
+
+  dq = deque(maxlen=max_tries)
+  while True:
     dq.append(time.time())
-    func(*args, **kwargs)
+    try:
+      func(*args, **kwargs)
+    except:
+      traceback.print_exc()
+      if len(dq) == max_tries and time.time() - dq[0] < secs:
+        break
+    else:
+      break
+
+def daterange(start, stop=datetime.date.today(), step=datetime.timedelta(days=1)):
+  d = start
+  while d < stop:
+    yield d
+    d += step
+def enable_pretty_logging(level=logging.DEBUG):
+  logger = logging.getLogger()
+  h = logging.StreamHandler()
+  formatter = logging.Formatter('%(asctime)s:%(levelname)-7s:%(name)-12s:%(message)s')
+  try:
+    import curses
+    color = False
+    curses.setupterm()
+    if curses.tigetnum("colors") > 0:
+      color = True
+    formatter = TornadoLogFormatter(color=color)
+  except:
+    import traceback
+    traceback.print_exc()
+  finally:
+    h.setLevel(level)
+    h.setFormatter(formatter)
+    logger.setLevel(level)
+    logger.addHandler(h)
+
+class TornadoLogFormatter(logging.Formatter):
+  def __init__(self, color, *args, **kwargs):
+    super().__init__(self, *args, **kwargs)
+    self._color = color
+    if color:
+      import curses
+      curses.setupterm()
+      fg_color = str(curses.tigetstr("setaf") or
+                 curses.tigetstr("setf") or "", "ascii")
+      self._colors = {
+        logging.DEBUG: str(curses.tparm(fg_color, 4), # Blue
+                     "ascii"),
+        logging.INFO: str(curses.tparm(fg_color, 2), # Green
+                    "ascii"),
+        logging.WARNING: str(curses.tparm(fg_color, 3), # Yellow
+                     "ascii"),
+        logging.ERROR: str(curses.tparm(fg_color, 1), # Red
+                     "ascii"),
+      }
+      self._normal = str(curses.tigetstr("sgr0"), "ascii")
+
+  def format(self, record):
+    try:
+      record.message = record.getMessage()
+    except Exception as e:
+      record.message = "Bad message (%r): %r" % (e, record.__dict__)
+    record.asctime = time.strftime(
+      "%m-%d %H:%M:%S", self.converter(record.created))
+    record.asctime += '.%03d' % ((record.created % 1) * 1000)
+    prefix = '[%(levelname)1.1s %(asctime)s %(module)s:%(lineno)d]' % \
+      record.__dict__
+    if self._color:
+      prefix = (self._colors.get(record.levelno, self._normal) +
+            prefix + self._normal)
+    formatted = prefix + " " + record.message
+    if record.exc_info:
+      if not record.exc_text:
+        record.exc_text = self.formatException(record.exc_info)
+    if record.exc_text:
+      formatted = formatted.rstrip() + "\n" + record.exc_text
+    return formatted.replace("\n", "\n    ")
+
+@lru_cache()
+def findfont(fontname):
+  from subprocess import check_output
+  out = check_output(['fc-match', '-v', fontname]).decode()
+  for l in out.split('\n'):
+    if l.lstrip().startswith('file:'):
+      return l.split('"', 2)[1]
+
+def debugfunc(logger=logging, *, _id=[0]):
+  def w(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+      myid = _id[0]
+      _id[0] += 1
+      logger.debug('[func %d] %s(%r, %r)', myid, func.__name__, args, kwargs)
+      ret = func(*args, **kwargs)
+      logger.debug('[func %d] return: %r', myid, ret)
+      return ret
+    return wrapper
+  return w
+

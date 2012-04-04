@@ -20,7 +20,7 @@ def green(str):
   return colored(str, 'green', attrs=['bold'])
 
 srcdir = os.path.expanduser('~/音乐')
-dstdir = '/media/PHONE\\x20CARD/Music'
+dstdir = '/media/PHONE\x20CARD/Music'
 oldsongs = os.path.expanduser('~/scripts/python/pydata/oldsongs')
 
 class dircmp(filecmp.dircmp):
@@ -65,7 +65,7 @@ def newer(f1, f2, shallow=True):
 def getNewSongs():
   allsongs = set()
   for i in path(srcdir).traverse():
-    if i.isfile() and i.extension.find('lrc') == -1:
+    if i.isfile() and i.extension == '.mp3':
       allsongs.add(str(i)[len(str(srcdir))+1:])
 
   with serializer.PickledData(oldsongs, default=set()) as o:
@@ -92,7 +92,7 @@ def main():
   if new:
     print(yellow('新加歌曲：\n\t'), '\n\t '.join(new))
 
-  if input('执行以上操作吗？[y/N] ') in 'Yy':
+  if input('执行以上操作吗？[Y/n] ') in 'Yy':
     toconvert = set(new)
     for i in subs:
       for j in i.right_only:
