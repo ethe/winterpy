@@ -2,8 +2,6 @@
 # vim:fileencoding=utf-8
 
 from netservice import ubuntuPaste as post
-from path import path
-
 import os
 from optparse import OptionParser
 try:
@@ -38,10 +36,13 @@ def main():
   if options.filename and not options.screenshot:
     parser.error('只有当给出图片时才能使用“文件名”选项')
   user = os.environ.get('USER')
-  if not options.poster and user == 'lilydjwg':
-    options.poster = '百合仙子'
-  elif user:
-    options.poster = user
+  if not options.poster:
+    if user == 'lilydjwg':
+      options.poster = '百合仙子'
+    elif user:
+      options.poster = user
+    else:
+      options.poster = 'anomymous'
   c = []
   if options.comment or not options.screenshot:
     while True:
@@ -50,19 +51,26 @@ def main():
       except EOFError:
         break
   if options.screenshot:
-    url = post(poster=options.poster,
-        code2='\n'.join(c),
-        screenshot=path(options.screenshot),
-        klass=options.klass,
-        filename=options.filename,
-      )
+    url = post(
+      poster     = options.poster,
+      code2      = '\n'.join(c),
+      screenshot = options.screenshot,
+      klass      = options.klass,
+      filename   = options.filename,
+    )
   else:
-    url = post(poster=options.poster,
-        code2='\n'.join(c),
-        klass=options.klass,
-      )
+    url = post(
+      poster    = options.poster,
+      code2     = '\n'.join(c),
+      klass     = options.klass,
+    )
   print(url)
-    
+  head, tail = url.rsplit('/', 1)
+  if options.screenshot:
+    print('%s/i%s' % (head, tail))
+  else:
+    print('%s/d%s' % (head, tail))
+
 if __name__ == '__main__':
   try:
     main()

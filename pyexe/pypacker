@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+# coding=utf-8
+
+'''
+将一个 Python 程序所 import 的所有用户自己的模块找出来一起打包
+'''
+
+import sys, os
+import tarfile
+from python import mymodsImported
+
+def getModuleFiles(file):
+  return {m.__file__ for m in mymodsImported(file)}
+
+if __name__ == '__main__':
+  fin = dry_run = False
+  if len(sys.argv) == 2:
+    fin = sys.argv[1]
+  elif len(sys.argv) == 3 and sys.argv[1] in ('-l', '--list', '--dry-run'):
+    dry_run = True
+    fin = sys.argv[2]
+  else:
+    print('用法：', os.path.basename(sys.argv[0]), '[选项] 要打包的 Python 程序文件')
+    print("\t选项 '-l', '--list' 或 '--dry-run' 指定不执行打包，只列出要打包的文件")
+    sys.exit(2)
+
+  if fin:
+    files = getModuleFiles(fin)
+    files.add(fin)
+    print('\n'.join(files))
+    if not dry_run:
+      archieve = os.path.basename(fin)
+      with tarfile.open(archieve + '.tar.bz2', 'w:bz2') as f:
+        for i in files:
+          f.add(i, os.path.split(i)[1])
+      print('完成！')

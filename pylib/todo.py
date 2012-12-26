@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-
 import sqlite3
 import os
 import sys
@@ -18,7 +15,7 @@ class TODO:
 
   def __call__(self, argv):
     if not argv:
-      self.do_get()
+      self.do_last()
     else:
       cmd = 'do_%s' % argv[0]
       try:
@@ -118,7 +115,7 @@ class TODO:
 
   def do_get(self):
     '''选取一项事务'''
-    sql = '''select id, what from item order by random() limit 1'''
+    sql = '''select id, what from item where id != %d order by random() limit 1''' % self.getlast()[0]
     self.cursor.execute(sql)
     for c in self.cursor:
       id, what = c

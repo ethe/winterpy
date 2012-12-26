@@ -1,65 +1,92 @@
-#!/usr/bin/env python3
-# fileencoding=utf-8
-
 '''
 调用 libnotify
-
-TODO：优先级、超时时间等
 '''
 
+__all__ = ["set", "show", "update", "set_timeout", "set_urgency"]
+
 from ctypes import *
+from threading import Lock
+import atexit
+
+NOTIFY_URGENCY_LOW = 0
+NOTIFY_URGENCY_NORMAL = 1
+NOTIFY_URGENCY_CRITICAL = 2
+UrgencyLevel = {NOTIFY_URGENCY_LOW, NOTIFY_URGENCY_NORMAL, NOTIFY_URGENCY_CRITICAL}
 
 libnotify = CDLL('libnotify.so')
+gobj = CDLL('libgobject-2.0.so')
+libnotify_lock = Lock()
+libnotify_inited = False
 
-class notify:
-  def __init__(self, summary, body=None, icon_str=None):
-    libnotify.notify_init("notify-send")
-    self.summary = summary.encode()
-    if body:
-      self.body = body.encode()
-    else:
-      self.body = None
-    if icon_str:
-      self.icon_str = icon_str.encode()
-    else:
-      self.icon_str = None
+class obj: pass
+notify_st = obj()
 
-    self.notify = libnotify.notify_notification_new(c_char_p(self.summary),
-        c_char_p(self.body), c_char_p(self.icon_str), c_void_p())
+def set(summary=None, body=None, icon_str=None):
+  with libnotify_lock:
+    init()
 
-  def show(self):
-    libnotify.notify_notification_show(self.notify, c_void_p());
+  if summary is not None:
+    notify_st.summary = summary.encode()
+  notify_st.body = notify_st.icon_str = None
+  if body is not None:
+    notify_st.body = body.encode()
+  if icon_str is not None:
+    notify_st.icon_str = icon_str.encode()
 
-  def update(self, summary=None, body=None, icon_str=None):
-    if not any((summary, body)):
-      raise TypeError('at least one argument please')
+  libnotify.notify_notification_update(
+    notify_st.notify,
+    c_char_p(notify_st.summary),
+    c_char_p(notify_st.body),
+    c_char_p(notify_st.icon_str),
+    c_void_p()
+  )
 
-    if summary:
-      self.summary = summary.encode()
-    if body or body == '':
-      self.body = body.encode()
-    if icon_str or icon_str == '':
-      self.icon_str = icon_str.encode()
+def show():
+  libnotify.notify_notification_show(notify_st.notify, c_void_p())
 
-    libnotify.notify_notification_update(self.notify, c_char_p(self.summary),
-        c_char_p(self.body), c_char_p(self.icon_str), c_void_p())
+def update(summary=None, body=None, icon_str=None):
+  if not any((summary, body)):
+    raise TypeError('at least one argument please')
 
-    self.show()
+  set(summary, body, icon_str)
+  show()
 
-  def __del__(self):
-    try:
+def set_timeout(self, timeout):
+  '''set `timeout' in milliseconds'''
+  libnotify.notify_notification_set_timeout(notify_st.notify, int(timeout))
+
+def set_urgency(self, urgency):
+  if urgency not in UrgencyLevel:
+    raise ValueError
+  libnotify.notify_notification_set_urgency(notify_st.notify, urgency)
+
+def init():
+  global libnotify_inited
+  if libnotify_inited:
+    return
+
+  libnotify.notify_init('pynotify')
+  libnotify_inited = True
+  notify_st.notify = libnotify.notify_notification_new(
+    c_void_p(), c_void_p(), c_void_p(),
+  )
+  atexit.register(uninit)
+
+def uninit():
+  global libnotify_inited
+  try:
+    if libnotify_inited:
+      gobj.g_object_unref(notify_st.notify)
       libnotify.notify_uninit()
-    except AttributeError:
-      # libnotify.so 已被卸载
-      pass
-
-  __call__ = update
+      libnotify_inited = False
+  except AttributeError:
+    # libnotify.so 已被卸载
+    pass
 
 if __name__ == '__main__':
   from time import sleep
-  n = notify('This is a test', '测试一下。')
-  n.show()
+  notify = __import__('__main__')
+  notify.set('This is a test', '测试一下。')
+  notify.show()
   sleep(1)
-  n.update('再测试一下。')
-  del n
-
+  notify.update(body='再测试一下。')

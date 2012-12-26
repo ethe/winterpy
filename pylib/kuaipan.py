@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-
 '''
 金山快盘 之 python 版
 
@@ -28,9 +25,9 @@ file 包含的属性
 
 from httpsession import Session, Operation
 from getpass import getpass
-from path import path, sha1path
+from lilypath import path, sha1path
 from url import Cookie, URIescape, encode_multipart_formdata
-from utils import filesize
+from myutils import filesize
 import json
 import sys
 from datetime import datetime

@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# fileencoding=utf-8
-
 '''
 一些和HTTP/HTML相关的函数/类
 
@@ -9,10 +6,9 @@
 
 import sys, os
 from urllib.parse import urlsplit
+from urllib.parse import quote as URIescape
 from urllib.parse import unquote as URIunescape
 from http import cookies
-# 这个放在这里备用
-from urllib.parse import quote as URIescape
 
 class URL(dict):
   '''
@@ -119,7 +115,7 @@ class PostData:
     elif isinstance(data, bytes):
       self.data = data
     elif isinstance(data, str):
-      self.data = data.encode('utf-8')
+      self.data = URIescape(data).encode('utf-8')
     elif data is None:
       pass
     else:
@@ -128,46 +124,11 @@ class PostData:
   def add(self, key, value):
     '''添加键值对，key 和 value 要求为 str'''
     key = key.encode('utf-8')
-    value = value.encode('utf-8')
+    value = URIescape(value).encode('utf-8')
     self.data += b'&'+key+b'='+value if self.data else key+b'='+value
 
   def __bool__(self):
     return bool(self.data)
-
-def parseQuery(query):
-  '''解析 URL 中的 query 部分，返回 dict'''
-  items = query.split('&')
-  ret = {}
-  for x in items:
-    x = x.split('=')
-    ret[x[0]] = URIunescape(x[1])
-  return ret
-
-def urlopen(url, headers={}, proxy=None, timeout=5):
-  '''打开 URL，返回 HTTPResponse 对象和新建的连接
-  只支持 HTTP 和 HTTPS'''
-
-  if not isinstance(url, URL):
-    raise TypeError('URL object expected')
-
-  import http.client
-  host = proxy and URL(proxy).netloc or url.netloc
-  if url.scheme == 'http':
-    conn = http.client.HTTPConnection(host, timeout=timeout)
-  elif url.scheme == 'https':
-    conn = http.client.HTTPSConnection(host, timeout=timeout)
-  else:
-    raise http.client.UnknownProtocol('不支持的协议类型：%s' % url.scheme)
-
-  if proxy:
-    conn.putrequest('GET', url.geturl().split('#')[0])
-  else:
-    conn.putrequest('GET', url.getpath().split('#')[0])
-  for k, v in headers.items():
-    conn.putheader(k, v)
-  conn.endheaders()
-
-  return conn.getresponse(), conn
 
 def entityunescape(string):
   '''HTML 实体反转义'''

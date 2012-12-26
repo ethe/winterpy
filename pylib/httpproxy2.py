@@ -1,5 +1,3 @@
-#!/usr/bin/env python3
-
 '''
 HTTP 代理服务器，允许在代理请求的过程中对数据进行读取或者修改
 
@@ -42,13 +40,15 @@ class HTTPProxy(BaseHTTPRequestHandler):
       self.send_response(501)
       self.send_header('Server', self.server_version)
       self.send_header('Content-Type', 'text/html; charset=utf-8')
-      self.send_header('Content-Length', str(len(content)))
-      self.end_headers()
-      if method in ('GET', 'POST'):
+      if self.command in ('GET', 'POST'):
         content = directError.format(server_version=self.server_version,
           domain=self.server.server_address[0],
           port=self.server.server_address[1]).encode('utf-8')
-        self.wfile.write(content)
+      else:
+        content = 'Unknown Error'
+      self.send_header('Content-Length', str(len(content)))
+      self.end_headers()
+      self.wfile.write(content)
       self.remoteResponse = None
       return
 
