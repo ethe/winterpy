@@ -1,12 +1,9 @@
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-
 import curses
 import readline
 import ctypes
 import ctypes.util
 import struct
-from 字符集 import width
+from charset import strwidth as width
 
 rllib_path = ctypes.util.find_library('readline')
 rllib = ctypes.CDLL(rllib_path)

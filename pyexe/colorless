@@ -31,6 +31,8 @@ def main(fname, lang):
       if os.path.splitext(fname)[1].lower() in ('.html', '.htm'):
         # if guessed, it would be xml instead.
         lexer = get_lexer_by_name('html')
+      else:
+        lexer = get_lexer_by_name('text')
 
   if sys.stdout.isatty():
     p = subprocess.Popen(['less', '-RFX'], stdin=subprocess.PIPE,
@@ -39,9 +41,10 @@ def main(fname, lang):
   else:
     p = None
     output = sys.stdout
-  formatter = Terminal256Formatter if os.environ.get('TERM', '').find('256') != -1 else TerminalFormatter
+  # formatter = Terminal256Formatter if os.environ.get('TERM', '').find('256') != -1 else TerminalFormatter
+  formatter = TerminalFormatter
   try:
-    print(highlight(code, lexer, formatter()), file=output)
+    print(highlight(code, lexer, formatter()), file=output, end='')
   except IOError: # SIGPIPE
     pass
   if p:

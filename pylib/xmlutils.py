@@ -1,20 +1,16 @@
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-
 '''
 XML 相关的小工具函数
-
-2011年1月9日
 '''
 
-from lxml import etree
 import re
+from lxml.html import parse, etree, tostring, fromstring
+
 allen = re.compile(r'^[\x20-\x7f]+$')
 en = re.compile(r'[\x20-\x7f]+')
 
 def enText(doc):
-  doc.xpath('//body')[0].attrib['lang'] = 'zh'
-  for el in doc.xpath('//p|//dt|//dd|//li|//a|//span|//em|//h2|//h3'):
+  doc.set('lang', 'zh-CN')
+  for el in doc.xpath('//p|//dt|//dd|//li|//a|//span|//em|//h2|//h3|//strong'):
     if el.getparent().tag == 'pre':
       continue
     if el.getparent().get('role') == 'pre':
@@ -38,7 +34,7 @@ def enText(doc):
       else:
         el.set('lang', 'en')
 
-  for el in doc.xpath('//a|//span|//em|//code'):
+  for el in doc.xpath('//a|//span|//em|//code|//strong'):
     if el.getparent().tag == 'pre':
       continue
     text = el.tail
@@ -49,7 +45,10 @@ def enText(doc):
         span = etree.Element('span')
         span.set('lang', 'en')
         span.text = m.group(0)
+        tail = el.tail
         el.addnext(span)
+        # re-insert mispositioned tail; the previous one will be overwritten
+        el.tail = tail
         if i == 0:
           el.tail = text[:m.start()]
         el = span
@@ -59,6 +58,15 @@ def enText(doc):
           el.tail = text[m.end():]
 
 def enText_convert(oldfile, newfile):
-  doc = etree.parse(oldfile)
+  doc = fromstring(open(oldfile).read())
   enText(doc)
-  doc.write(newfile, encoding='UTF-8', xml_declaration=True)
+  with open(newfile, 'w') as f:
+    f.write(doc.getroottree().docinfo.doctype + '\n')
+    f.write(tostring(doc, encoding=str, method='xml'))
+
+if __name__ == '__main__':
+  import sys
+  if len(sys.argv) == 3:
+    enText_convert(*sys.argv[1:])
+  else:
+    print('parameters: old_file new_file', file=sys.stderr)

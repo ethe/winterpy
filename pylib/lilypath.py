@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # vim:fileencoding=utf-8
 
 '''
@@ -159,7 +158,7 @@ class path:
     return os.path.islink(self.value)
 
   def isdir(self):
-    return os.path.isdir(self.value)
+    return os.path.isdir(self.value) and not os.path.islink(self.value)
 
   def isfile(self):
     return os.path.isfile(self.value)
@@ -239,6 +238,7 @@ class path:
         os.mkdir(str(self))
       else:
         raise OSError(17, os.strerror(17), str(self.parent()))
+    return self
 
   def rename(self, newname):
     '''文件更名，同时更新本对象所指'''

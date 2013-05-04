@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-
 '''
 跟踪需要备份的配置文件，以 $HOME 为基准目录
 '''
@@ -123,7 +120,7 @@ class rcfile(YAMLData):
               cprint(e.strerror, 'red')
               ans = ''
               continue
-            os.system("vim '%s'" % key)
+            os.system("vim .")
             ans = ''
           elif ans == 's':
             continue

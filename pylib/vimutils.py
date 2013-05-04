@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-
 try:
   import vim
 except ImportError:
@@ -15,4 +12,5 @@ def input(prompt='', style=None):
   return ans
 
 def print(style, text):
+  #XXX: deprecated; moved to vimrc.py
   vim.command("echohl %s | echo '%s' | echohl None" % (style, text.replace("'", "''")))

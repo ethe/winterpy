@@ -1,10 +1,5 @@
-#!/usr/bin/env python3
-# vim:fileencoding=utf-8
-
 '''
 HTTP 会话，主要针对需要登录的服务
-
-2010年10月22日
 '''
 
 import urllib.request
@@ -28,31 +23,36 @@ class Session:
 
     if proxy is True:
       self.urlopener = urllib.request.build_opener(
-          urllib.request.HTTPCookieProcessor(self.cookie),
-          urllib.request.ProxyHandler(),
-        )
+        urllib.request.HTTPCookieProcessor(self.cookie),
+        urllib.request.ProxyHandler(),
+      )
     elif isinstance(proxy, dict):
       self.urlopener = urllib.request.build_opener(
-          urllib.request.HTTPCookieProcessor(self.cookie),
-          urllib.request.ProxyHandler(proxy),
-        )
+        urllib.request.HTTPCookieProcessor(self.cookie),
+        urllib.request.ProxyHandler(proxy),
+      )
     elif not proxy:
       self.urlopener = urllib.request.build_opener(
-          urllib.request.HTTPCookieProcessor(self.cookie),
-        )
+        urllib.request.HTTPCookieProcessor(self.cookie),
+      )
     else:
       raise ValueError('unexpected proxy value')
 
-  def request(self, url, data=None, timeout=None, headers={}):
+  def request(self, url, data=None, timeout=None, headers={}, method=None):
     '''
     发送请求，返回 response 对象
 
     url 为字符串，data 会传给 PostData
     '''
+    kwargs = {}
+    # only Python 3.3+ support the method keyword
+    if method is not None:
+      kwargs['method'] = method
+
     if data:
-      request = urllib.request.Request(url, PostData(data).data)
+      request = urllib.request.Request(url, PostData(data).data, **kwargs)
     else:
-      request = urllib.request.Request(url)
+      request = urllib.request.Request(url, **kwargs)
 
     if self.UserAgent:
       request.add_header('User-Agent', self.UserAgent)
@@ -83,3 +83,16 @@ class Operation:
     '''删除 cookie 好了'''
     os.unlink(self.cookie.filename)
 
+def make_cookie(name, value, expires=None, domain='', path='/'):
+  '''
+  returns a Cookie instance that you can add to a cookiejar
+
+  expires: the time in seconds since epoch of time
+  '''
+  return http.cookiejar.Cookie(
+    version=0, name=name, value=value, port=None, port_specified=False,
+    domain=domain, domain_specified=False, domain_initial_dot=False,
+    path=path, path_specified=True, secure=False, expires=expires,
+    discard=None, comment=None, comment_url=None, rest={'HttpOnly': None},
+    rfc2109=False
+  )
